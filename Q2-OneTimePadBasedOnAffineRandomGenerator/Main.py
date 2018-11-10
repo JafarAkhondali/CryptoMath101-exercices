@@ -15,13 +15,13 @@ def cli():
 
 @click.command("gen")
 @click.option('--key-file', '-k', help='Generated key file to use in encryption', default='key.config', type=click.File('w+'))
-@click.option('--alpha-num', '-a', help='Alpha number in ', default=7)
-@click.option('--block-size-bytes', '-bs', help='Block size for reading plaintext bytes', default=20)
-def generate_key(key_file,base_num,block_size_bytes):
+@click.option('--alpha', '-a', help='Mulitplier value for random generator', default=2)
+@click.option('--beta', '-b', help='Bias value for random generator', default=1)
+@click.option('--seed', '-s', help='Seed value for random generator', default=3)
+@click.option('--mode', '-m', help='Mode value for random generator', default=13)
+def generate_key(key_file,alpha,beta,seed,mode):
     l("Generating key file ...")
-    seed = random.random()
-    #den_coder = DenCoder(base_num=base_num, seed=seed, block_size_bytes=block_size_bytes)
-    DenCoder.save_key(key_file, base_num=base_num, seed=seed, block_size_bytes=block_size_bytes)
+    DenCoder.save_key(key_file,alpha,beta,seed,mode)
     l("Key file generated at %s" % (os.path.realpath(key_file.name)))
 
 
@@ -48,6 +48,7 @@ def decrypt(key_file,ciphertext_file,plaintext_file):
 @click.command("crack")
 @click.option('--ciphertext-file', '-ct',help='Ciphertext or any ciphered file', default='ciphertext.enc', type=click.Path(readable=True,exists=True))
 @click.option('--plaintext-file', '-pt',help='Plaintext or any unciphered file', default='plaintext.txt', type=click.Path(readable=True,exists=True))
+@click.option('--mode', '-m', help='Mode value for random generator', default=13)
 @click.option('--key-file', '-k', help='Generated key file to use in encryption', default='key.config', type=click.File('w+'))
 def crack(ciphertext_file,plaintext_file,key_file):
     DenCoder.extract_key(ciphertext_file,plaintext_file,key_file)

@@ -1,50 +1,32 @@
+
+
 import os
 import re
 
 import numpy as np
 from copy import deepcopy
 import random
-from Helper import int2base, binaryStr, l, bitcount
-from math import ceil
+from Helper import int2base, binaryStr, l, bitcount, calculate_max_bits_for_number, modinv
+from math import ceil, floor
 import configparser
 from progress.bar import ChargingBar
 
 class DenCoder:
-    def __init__(self, base_num, seed, block_size_bytes):
-        self.base_num = base_num
+    def __init__(self, alpha, beta, seed, mode):
+        self.alpha= alpha
+        self.beta = beta
         self.seed = seed
-        self.block_size_bytes = block_size_bytes
-
-        # Generate lookUpTable
-        keys = np.arange(base_num)
-        values = deepcopy(keys)
-
-        if seed:
-            random.seed(seed)
-
-        random.shuffle(values)
-        self.look_up_table_encryption = {str(key): str(value) for (key, value) in zip(keys, values)}
-        self.look_up_table_decryption = {str(key): str(value) for (key, value) in zip(values,keys)}
-        l(self.look_up_table_encryption)
-        # Generate lookUpTable
-        # self.look_up_table_encryption = DenCoder.generate_table(seed,base_num,'enc')
-        # self.look_up_table_decryption = DenCoder.generate_table(seed,base_num,'dec')
-
-        biggest_number_in_block_base_10_len = len(str(int2base(2 ** (block_size_bytes*8),base_num)))
-
-        # Calculate block padding
-        self.max_block_size_after_encrypt_bits = len(binaryStr(int(str(base_num-1) * biggest_number_in_block_base_10_len, base_num)))
-        self.max_block_size_after_encrypt_bytes = int(ceil(self.max_block_size_after_encrypt_bits / 8 ))
-        self.max_block_size_after_encrypt_bits = self.max_block_size_after_encrypt_bytes * 8
-        self.padding_block_size_bytes = self.calculate_padding_length(self.max_block_size_after_encrypt_bits)
+        self.mode = mode
+        self.chunk_size = calculate_max_bits_for_number(mode)
 
     @staticmethod
-    def save_key (file_object, base_num, seed, block_size_bytes):
+    def save_key (file_object,alpha,beta,seed,mode):
         config = configparser.ConfigParser()
         config['key'] = {
-            'p': base_num,
+            'alpha': alpha,
+            'beta': beta,
             'seed': seed,
-            'block_size_bytes': block_size_bytes
+            'mode': mode
         }
         config.write(file_object)
 
@@ -52,24 +34,12 @@ class DenCoder:
     def read_key(file_object):
         config = configparser.ConfigParser()
         config.read_file(file_object)
-        base_num = config.getint('key','p')
-        seed = config.getfloat('key','seed')
-        block_size_bytes = config.getint('key','block_size_bytes')
-        return DenCoder(base_num=base_num, seed=seed, block_size_bytes=block_size_bytes)
+        alpha = config.getint('key','alpha')
+        beta = config.getint('key','beta')
+        seed = config.getint('key','seed')
+        mode = config.getint('key','mode')
+        return DenCoder(alpha=alpha, beta=beta, seed=seed, mode=mode)
 
-    def print_lookup_table(self):
-        l(self.look_up_table_encryption)
-
-    @staticmethod
-    def calculate_padding_length(max_block_size_after_encrypt_bits):
-        bytes = 1
-        base = 255
-        while True:
-            if max_block_size_after_encrypt_bits <= base:
-                break
-            bytes += 1
-            base = (base << 8) | 255
-        return bytes
 
     def encryption_chunk_reader(self, file_name, chunk_size):
         with open(file_name, "rb") as f:
@@ -77,93 +47,89 @@ class DenCoder:
                 chunk = f.read(chunk_size)
                 if chunk:
                     yield chunk
-                else:
-                    break
+                else: break
 
-
-
-    # def decryption_chunk_reader(self, filename, padding_size, base_destination,max_block_size_after_encrypt_bytes, block_size_bytes):
-    def decryption_chunk_reader(self, filename, padding_size, base_destination):
-        file_size = os.stat(filename).st_size
+    def decryption_chunk_reader(self, filename, chunk_size):
         with open(filename, "rb") as f:
             while True:
-                padding = f.read(padding_size)
-                if not padding:
-                    break
-                padding_length = int.from_bytes(padding,byteorder='little')
-                cipher_int_base_10 = int.from_bytes(f.read(self.max_block_size_after_encrypt_bytes),byteorder='little')
-                cipher_int = int2base(cipher_int_base_10, base_destination)
-                block_size = self.max_block_size_after_encrypt_bytes * 8 - padding_length
-                zeros_count = block_size - len(bin(cipher_int_base_10)[2:])
-                chunk = zeros_count * '0' + cipher_int
-                chunk_size = self.block_size_bytes
-                if f.tell() < file_size:
-                    yield chunk, chunk_size
-                else:
-                    yield chunk, ((block_size+zeros_count)//8)+1
-                    break
-                # if chunk:
-                    # yield chunk, ceil(block_size/8) + zeros_count
+                chunk = f.read(chunk_size)
+                if chunk:
+                    yield chunk
+                else: break
 
-                    # yield chunk, len(chunk)
-                # else:
-                #     break
+    def next_random_number(self):
+        # while True:
+        #     yield 0
+        x = (self.alpha * self.seed + self.beta) % self.mode
+        yield x
+        while True:
+            x = (self.alpha * x + self.beta) % self.mode
+            yield x
 
     def encrypt_file(self, plaintext_file_name, ciphertext_file_name):
-        pt_file = self.encryption_chunk_reader(plaintext_file_name, self.block_size_bytes)
+        pt_file = open(plaintext_file_name, "rb")  #self.encryption_chunk_reader(plaintext_file_name, chunk_size)
         ct_file = open(ciphertext_file_name, 'wb+')
+        pt_bytes = pt_file.read()
+        pt_data = int.from_bytes(pt_bytes, 'big')
 
         file_size = os.stat(plaintext_file_name).st_size
-        bar = ChargingBar('[*] Encrypting ', max=(file_size // (self.block_size_bytes * 100 ))+1 )
-        for index,pt_chunk in enumerate(pt_file):
-            if index % 100 == 0:
-                bar.next()
-            plain_num_base_10 = int.from_bytes(pt_chunk, byteorder='little')
-            # print(self.block_size_bytes)
-            nums_after_lookup_table = ''
-            # temp = ''
-            for num in int2base(plain_num_base_10,self.base_num):
-                # temp += num
-                nums_after_lookup_table = nums_after_lookup_table + self.look_up_table_encryption.get(num)
-            # print('PT: %s' % temp)
-            # print('CT: %s' % nums_after_lookup_table )
+        bar = ChargingBar('[*] Encrypting ', max=((file_size*8 // self.chunk_size)))
+        print((file_size*8 // self.chunk_size))
+        random_generator = self.next_random_number()
+        # bits_mask = 2 ** self.chunk_size - 1
+        random_num = next(random_generator)
 
-            leading_zero_bytes = re.search('(?!0)', nums_after_lookup_table).start()
-            nums_after_lookup_table = int(nums_after_lookup_table, self.base_num)
-            padding_bits = self.max_block_size_after_encrypt_bits - len(bin(nums_after_lookup_table)[2:]) - leading_zero_bytes
-            padding_bytes = padding_bits.to_bytes(self.padding_block_size_bytes, byteorder='little')
-            # print('------')
-            ct_bytes = nums_after_lookup_table.to_bytes(self.max_block_size_after_encrypt_bytes, byteorder='little')
-            ct_file.write(padding_bytes)
-            ct_file.write(ct_bytes)
+        pt_data = pt_data ^ random_num
+        # pt_bits = pt_data & bits_mask
+        # pt_data = pt_data >> self.chunk_size
+        # ct_bits = (pt_bits ^ random_num) # | (ct_bits << self.chunk_size)
+        # ct_bits=0
+        # for _ in range(((file_size-self.chunk_size) // self.chunk_size)):
+        for _ in range((file_size*8 // self.chunk_size)-1):
+            # print(_)
+            random_num = next(random_generator)
+            pt_data ^= (random_num << (_+1) * self.chunk_size)
+            # pt_data = pt_data >> self.chunk_size
+            # ct_bits = (temp_bits ^  ) | (ct_bits << self.chunk_size)
+            bar.next()
+            # if _ % 100 == 0:
+            #     print(index)
+            #     bar.next()
+        bar.next()
+        # remaining_bits = (file_size*8 - ((_+2) * self.chunk_size))# % self.chunk_size
+        # random_num = next(random_generator)
+        # pt_bits = pt_data #& (2**remaining_bits-1)
+        # last_block_xored = (pt_bits ^ random_num) & (2**remaining_bits-1)
+        # ct_bits = ct_bits | last_block_xored
+        # ct_bits = (ct_bits << remaining_bits ) | last_block_xored
+
+        pt_data = pt_data.to_bytes(file_size, byteorder='big')
+        # ct_bytes = ct_bits.to_bytes(file_size+floor(remaining_bits//8), byteorder='big')
+        ct_file.write(pt_data)
+        # ct_file.write(ct_bytes[0:file_size])
         bar.finish()
         l("Encryption done")
         l("Saved at %s" % os.path.abspath(ct_file.name))
 
-    def decrypt_file(self,ciphertext_file_name,plaintext_file_name):
-        # filename, chunk_size, padding_size, base_destination):
-        ct_chunk_reader = self.decryption_chunk_reader(ciphertext_file_name, self.padding_block_size_bytes, self.base_num)
-        #ct_chunk_reader = self.decryption_chunk_reader(ciphertext_file_name) #, self.padding_block_size_bytes, self.base_num, self.max_block_size_after_encrypt_bytes, self.block_size_bytes )
-        pt_file = open(plaintext_file_name, 'wb+')
-        file_size = os.stat(ciphertext_file_name).st_size
+    def decrypt_file(self, ciphertext_file_name, plaintext_file_name):
+        pt_file = open(ciphertext_file_name, "rb")
+        ct_file = open(plaintext_file_name, 'wb+')
+        pt_bytes = pt_file.read()
+        pt_data = int.from_bytes(pt_bytes, 'big')
 
-        bar = ChargingBar('[*] Decrypting ', max=(file_size // (self.max_block_size_after_encrypt_bytes*1000)) + 1)
-        for index,(pt_chunk,block_size) in enumerate(ct_chunk_reader):
-            if index % 1000 == 0:
-                bar.next()
-            nums_after_lookup_table = ''
-            for num in pt_chunk:
-                nums_after_lookup_table = nums_after_lookup_table + self.look_up_table_decryption.get(num)
-            nums_after_lookup_table = int(nums_after_lookup_table, self.base_num)
-            # if len(bin(nums_after_lookup_table)[2:])/8 > block_size:
-            #     someshit=1
-            ct_bytes = nums_after_lookup_table.to_bytes(block_size, byteorder='little')
-            # ct_bytes = nums_after_lookup_table.to_bytes(self.block_size_bytes, byteorder='little')
-            pt_file.write(ct_bytes)
-            # except Exception as e:
-            #     print(e)
-            #     pass
-        bar.next(bar.max-bar.index)
+        file_size = os.stat(ciphertext_file_name).st_size
+        bar = ChargingBar('[*] Decrypting ', max=((file_size*8 // self.chunk_size)))
+        print((file_size*8 // self.chunk_size))
+        random_generator = self.next_random_number()
+        random_num = next(random_generator)
+        pt_data = pt_data ^ random_num
+        for _ in range((file_size*8 // self.chunk_size)-1):
+            random_num = next(random_generator)
+            pt_data ^= (random_num << (_+1) * self.chunk_size)
+            bar.next()
+        bar.next()
+        pt_data = pt_data.to_bytes(file_size, byteorder='big')
+        ct_file.write(pt_data)
         bar.finish()
         l("Decryption done")
         l("Saved at %s" % os.path.abspath(pt_file.name))
@@ -315,34 +281,3 @@ class DenCoder:
             l("Sorry we were unable to find a valid seed :(")
         else:
             DenCoder.save_key(key_file, last_valid_base_num, valid_seed, last_valid_block_size)
-
-
-
-
-
-    @staticmethod
-    def is_dictionary_valid(plaintext_block_base_n, cipher_block_in_base_n, plain_lookup_table = None):
-        if not plain_lookup_table:
-            plain_lookup_table = {}
-
-        for index, num in enumerate(plaintext_block_base_n):
-            if num in plain_lookup_table:
-                if plain_lookup_table[num] != cipher_block_in_base_n[index]:
-                    return False, plain_lookup_table
-            else:
-                plain_lookup_table[num] = cipher_block_in_base_n[index]
-        return True, plain_lookup_table
-
-    @staticmethod
-    def generate_table(seed, base_num, type):
-        random.seed(seed)
-        keys = np.arange(base_num)
-        values = deepcopy(keys)
-        random.shuffle(values)
-        return {str(key): str(value) for (key, value) in zip(keys, values)} if type == 'enc' else {str(key): str(value) for (key, value) in zip(values, keys)}
-
-
-
-
-
-
