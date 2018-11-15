@@ -32,13 +32,14 @@ def binaryStr(str):
 
 
 def l(str):
-    print("[*] %s " % str)
+    print("[✨] %s " % str)
 
 
 def bitcount(n):
     a = 1
     while 1 << a <= n:
         a <<= 1
+
 
 def calculate_max_bits_for_number(num):
     bits = 1
@@ -48,16 +49,19 @@ def calculate_max_bits_for_number(num):
         max_size = (max_size << 1) | max_size
     return bits
 
+
 def egcd(a, b):
     if a == 0:
         return (b, 0, 1)
     else:
         g, y, x = egcd(b % a, a)
-        return (g, x - (b // a) * y, y)
+        return g, x - (b // a) * y, y
+
 
 def modinv(a, m):
     g, x, y = egcd(a, m)
     if g != 1:
+        #return False
         raise Exception('modular inverse does not exist')
     else:
         return x % m

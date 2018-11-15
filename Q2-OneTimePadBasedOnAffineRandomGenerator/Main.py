@@ -48,10 +48,17 @@ def decrypt(key_file,ciphertext_file,plaintext_file):
 @click.command("crack")
 @click.option('--ciphertext-file', '-ct',help='Ciphertext or any ciphered file', default='ciphertext.enc', type=click.Path(readable=True,exists=True))
 @click.option('--plaintext-file', '-pt',help='Plaintext or any unciphered file', default='plaintext.txt', type=click.Path(readable=True,exists=True))
-@click.option('--mode', '-m', help='Mode value for random generator', default=13)
+@click.option('--mode-from', '-mf', help='Mode range value to check FROM', default=2)
+@click.option('--mode-to', '-mt', help='Mode range value to check TO', default=20)
 @click.option('--key-file', '-k', help='Generated key file to use in encryption', default='key.config', type=click.File('w+'))
-def crack(ciphertext_file,plaintext_file,key_file):
-    DenCoder.extract_key(ciphertext_file,plaintext_file,key_file)
+def crack(ciphertext_file,plaintext_file,mode_from,mode_to,key_file):
+    if mode_to < mode_from:
+        print("MODE_TO should be higher than MODE_FROM!")
+        exit(-1)
+    if mode_from < 2:
+        print("Mode FROM range should be higher than 2!")
+        exit(-2)
+    DenCoder.extract_key(ciphertext_file,plaintext_file,mode_from,mode_to,key_file)
 
 
 cli.add_command(generate_key)
@@ -61,11 +68,3 @@ cli.add_command(crack)
 
 if __name__ == '__main__':
     cli()
-
-
-# def Gen(key_file, plaintext_file, ciphertext_file):
-#     """
-#     Ex to generate a key: \n
-#     python Main.py gen -k mykey.key
-#     """
-#     print("I'm a beautiful CLI ✨")
