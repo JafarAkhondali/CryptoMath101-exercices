@@ -137,43 +137,46 @@ class DenCoder:
                 X4 = P4_HILL ^ C4
                 X5 = P5_HILL ^ C5
 
-                gcd, __, ___ = egcd(X3 - X4, mode)
+                gcd, __, ___ = egcd((X3 - X4)%mode, mode)
 
                 gcd_flag = False
                 if gcd != 1:
                     alpha = ( (((X4 - X5)%mode)//gcd) * modinv(((X3 - X4)%mode) // gcd, mode // gcd)) % (mode // gcd)
                     gcd_flag = True
                 else:
-                    alpha = (((X4 - X5)%mode) * modinv(X3 - X4, mode)) % mode
+                    alpha = (((X4 - X5)%mode) * modinv((X3 - X4)%mode, mode)) % mode
 
                 if gcd_flag:
                     for alpha_test in range(alpha, mode + 1, gcd):
-                        # alpha * X1 + beta % mode = X2
-                        # beta % mode = X2 - alpha * X1
-                        beta = (X3 - (alpha_test * X2)%mode ) % mode
+                        try:
+                            # alpha * X1 + beta % mode = X2
+                            # beta % mode = X2 - alpha * X1
+                            beta = (X3 - (alpha_test * X2)%mode ) % mode
 
-                        # alpha * seed + beta % mode = X1
-                        # seed = X1 - beta * (alpha ^ -1 )
-                        seed = ((X1 - beta) * (modinv(alpha_test, mode))) % mode
+                            # alpha * seed + beta % mode = X1
+                            # seed = X1 - beta * (alpha ^ -1 )
+                            seed = ((X1 - beta) * (modinv(alpha_test, mode))) % mode
 
-                        DenCoder.affinehill(alpha_test, beta, seed, mode, X1)
-                        DenCoder.affinehill(alpha_test, beta, X1, mode, X2)
-                        DenCoder.affinehill(alpha_test, beta, X2, mode, X3)
-                        DenCoder.affinehill(alpha_test, beta, X3, mode, X4)
-                        # DenCoder.affinehill(alpha, beta, X4, mode, X5)
+                            DenCoder.affinehill(alpha_test, beta, seed, mode, X1)
+                            DenCoder.affinehill(alpha_test, beta, X1, mode, X2)
+                            DenCoder.affinehill(alpha_test, beta, X2, mode, X3)
+                            DenCoder.affinehill(alpha_test, beta, X3, mode, X4)
+                            # DenCoder.affinehill(alpha, beta, X4, mode, X5)
 
-                        l("-" * 40)
-                        l("%s is a valid mode :)" % mode)
+                            l("-" * 40)
+                            l("%s is a valid mode :)" % mode)
 
-                        l("alpha: %s" % alpha_test)
-                        l("beta: %s" % beta)
-                        l("seed: %s" % seed)
-                        l("mode: %s" % mode)
+                            l("alpha: %s" % alpha_test)
+                            l("beta: %s" % beta)
+                            l("seed: %s" % seed)
+                            l("mode: %s" % mode)
 
-                        DenCoder.save_key(key_file, alpha_test, beta, seed, mode)
-                        l("You key has been saved in " + os.path.abspath(key_file.name))
-                        found_key = True
-                        # break
+                            DenCoder.save_key(key_file, alpha_test, beta, seed, mode)
+                            l("You key has been saved in " + os.path.abspath(key_file.name))
+                            found_key = True
+                            # break
+                        except Exception as e:
+                            continue
                 else:
                     beta = (X2 - alpha * X1) % mode
 
@@ -200,5 +203,6 @@ class DenCoder:
                     found_key = True
             except Exception as e:
                 pass
+
         if not found_key:
             l("Sorry i wasn't able to find your key :(")
