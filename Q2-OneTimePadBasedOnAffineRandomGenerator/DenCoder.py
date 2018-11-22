@@ -141,7 +141,7 @@ class DenCoder:
 
                 gcd_flag = False
                 if gcd != 1:
-                    alpha = ( (((X4 - X5)%mode)//gcd) * modinv(((X3 - X4)%mode) // gcd, mode // gcd)) % (mode // gcd)
+                    alpha = ((((X4 - X5)%mode)//gcd) * modinv(((X3 - X4)%mode) // gcd, mode // gcd)) % (mode // gcd)
                     gcd_flag = True
                 else:
                     alpha = (((X4 - X5)%mode) * modinv((X3 - X4)%mode, mode)) % mode
