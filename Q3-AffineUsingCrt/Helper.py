@@ -1,30 +1,7 @@
 import string
+from functools import reduce
 
 digs = string.digits + string.ascii_letters
-
-
-def int2base(x, base):
-    if not isinstance(x, int):
-        x = int(x, 10)
-    if x < 0:
-        sign = -1
-    elif x == 0:
-        return digs[0]
-    else:
-        sign = 1
-
-    x *= sign
-    digits = []
-
-    while x:
-        digits.append(digs[int(x % base)])
-        x = x // base
-
-    if sign < 0:
-        digits.append('-')
-
-    digits.reverse()
-    return ''.join(digits)
 
 
 def binaryStr(str):
@@ -65,3 +42,29 @@ def modinv(a, m):
         raise Exception('modular inverse does not exist')
     else:
         return x % m
+
+
+
+def solve_crt(cts, primes):
+    mode = reduce((lambda x, y: x * y), primes)
+    pt = 0
+    for i, ct in enumerate(cts):
+        arg1 = ct
+        arg2 = mode // primes[i]
+        arg3 = modinv(arg2, primes[i])
+        pt += arg1 * arg2 * arg3
+    return pt % mode
+
+
+def is_prime(n):
+    if n == 2 or n == 3: return True
+    if n < 2 or n % 2 == 0: return False
+    if n < 9: return True
+    if n % 3 == 0: return False
+    r = int(n ** 0.5)
+    f = 5
+    while f <= r:
+        if n % f == 0: return False
+        if n % (f + 2) == 0: return False
+        f += 6
+    return True
