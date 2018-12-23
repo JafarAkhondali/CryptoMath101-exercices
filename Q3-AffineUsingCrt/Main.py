@@ -82,8 +82,6 @@ def decrypt(key_file, ciphertext_file, plaintext_file):
               type=click.Path(readable=True, exists=True))
 @click.option('--plaintext-file', '-pt', help='Plaintext or any unciphered file', default='plaintext.txt',
               type=click.Path(readable=True, exists=True))
-# @click.option('--mode-from', '-mf', help='Mode range value to check FROM', default=2)
-# @click.option('--mode-to', '-mt', help='Mode range value to check TO', default=20)
 @click.option('--primes', '-p', help='Prime numbers seperated by `,`. Ex: 17,19,181', default=None)
 @click.option('--key-file', '-k', help='Generated key file to use in encryption', default='key.config', type=click.File('w+'))
 def crack(ciphertext_file, plaintext_file, primes, key_file):
@@ -94,10 +92,22 @@ def crack(ciphertext_file, plaintext_file, primes, key_file):
     DenCoder.extract_key(ciphertext_file, plaintext_file, primes_list, key_file)
 
 
+@click.command("fullcrack")
+@click.option('--ciphertext-file', '-ct', help='Ciphertext or any ciphered file', default='ciphertext.enc',
+              type=click.Path(readable=True, exists=True))
+@click.option('--plaintext-file', '-pt', help='Plaintext or any unciphered file', default='plaintext.txt',
+              type=click.Path(readable=True, exists=True))
+@click.option('--key-file', '-k', help='Generated key file to use in encryption', default='key.config', type=click.File('w+'))
+def fullcrack(ciphertext_file, plaintext_file, key_file):
+    l("Not implemented yet")
+    # DenCoder.full_extract_key(ciphertext_file, plaintext_file, key_file)
+
+
 cli.add_command(generate_key)
 cli.add_command(encrypt)
 cli.add_command(decrypt)
 cli.add_command(crack)
+cli.add_command(fullcrack)
 
 if __name__ == '__main__':
     cli()

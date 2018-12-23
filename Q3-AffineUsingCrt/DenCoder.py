@@ -131,6 +131,7 @@ class DenCoder:
         count_of_primes = len(primes)
         l("Starting key extraction")
         found_key = False
+        calpha = cbeta = None
         for alpha in range(1, 100):
             if found_key:
                 break
@@ -165,6 +166,8 @@ class DenCoder:
 
                     if ct == enc_chunk:
                         l("Found key: valid Alpha=%s \tBeta=%s " % (alpha, beta))
+                        calpha = alpha
+                        cbeta = beta
                         found_key = True
                         break
                     else:
@@ -173,3 +176,6 @@ class DenCoder:
                     continue
         if not found_key:
             l("Sorry i wasn't able to find your key :(")
+        else:
+            DenCoder.save_key(key_file, calpha, cbeta, primes)
+            l("Key file generated at %s" % (os.path.realpath(key_file.name)))
