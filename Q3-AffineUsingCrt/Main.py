@@ -44,7 +44,7 @@ def generate_key(key_file, alpha, beta, primes, primes_count, primes_count_min_r
         primes_list = []
         while len(primes_list) < primes_count:
             rand_32_int = random.randrange(MIN_32_BITS, MAX_32_BITS) | 1  # Only use odd numbers
-            if is_prime(rand_32_int):
+            if rand_32_int not in primes_list and is_prime(rand_32_int):
                 primes_list.append(rand_32_int)
         print("Chosed primes: " + str(primes_list))
     DenCoder.save_key(key_file, alpha, beta, primes_list)
@@ -82,18 +82,16 @@ def decrypt(key_file, ciphertext_file, plaintext_file):
               type=click.Path(readable=True, exists=True))
 @click.option('--plaintext-file', '-pt', help='Plaintext or any unciphered file', default='plaintext.txt',
               type=click.Path(readable=True, exists=True))
-@click.option('--mode-from', '-mf', help='Mode range value to check FROM', default=2)
-@click.option('--mode-to', '-mt', help='Mode range value to check TO', default=20)
-@click.option('--key-file', '-k', help='Generated key file to use in encryption', default='key.config',
-              type=click.File('w+'))
-def crack(ciphertext_file, plaintext_file, mode_from, mode_to, key_file):
-    if mode_to < mode_from:
-        print("MODE_TO should be higher than MODE_FROM!")
-        exit(-1)
-    if mode_from < 2:
-        print("Mode FROM range should be higher than 2!")
-        exit(-2)
-    DenCoder.extract_key(ciphertext_file, plaintext_file, mode_from, mode_to, key_file)
+# @click.option('--mode-from', '-mf', help='Mode range value to check FROM', default=2)
+# @click.option('--mode-to', '-mt', help='Mode range value to check TO', default=20)
+@click.option('--primes', '-p', help='Prime numbers seperated by `,`. Ex: 17,19,181', default=None)
+@click.option('--key-file', '-k', help='Generated key file to use in encryption', default='key.config', type=click.File('w+'))
+def crack(ciphertext_file, plaintext_file, primes, key_file):
+    if not primes:
+        raise click.UsageError("How am i supposed to crack key without having primes?")
+
+    primes_list = [int(p) for p in primes.split(',')]
+    DenCoder.extract_key(ciphertext_file, plaintext_file, primes_list, key_file)
 
 
 cli.add_command(generate_key)
