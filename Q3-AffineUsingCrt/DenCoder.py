@@ -62,6 +62,8 @@ class DenCoder:
         file_size = os.stat(f.name).st_size
 
         lastblock_size = int.from_bytes(f.read(10), 'little')
+        if lastblock_size == 0:
+            lastblock_size = chunk_size
         while True:
             data = f.read(prime_size)
             if not data:
