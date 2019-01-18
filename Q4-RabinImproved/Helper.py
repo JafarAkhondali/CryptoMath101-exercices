@@ -15,8 +15,8 @@ def powmod(a, b, c):
     if b < 3:
         return a ** b % c
     if b % 2 == 0:
-        return (powmod(a ** 2, b // 2, c) ** 2) % c
-    return (powmod(a ** 2, b // 2, c) * a) % c
+        return (powmod(a, b // 2, c) ** 2) % c
+    return ((powmod(a , b // 2, c) ** 2) * a) % c
 
 
 def egcd(a, b):
@@ -34,18 +34,6 @@ def modinv(a, m):
         raise Exception('modular inverse does not exist')
     else:
         return x % m
-
-
-def solve_crt(cts, primes):
-    mode = reduce((lambda x, y: x * y), primes)
-    pt = 0
-    for i, ct in enumerate(cts):
-        arg1 = ct
-        arg2 = mode // primes[i]
-        arg3 = modinv(arg2, primes[i])
-        pt += arg1 * arg2 * arg3
-    return pt % mode
-
 
 def is_prime(n):
     if n == 2 or n == 3: return True

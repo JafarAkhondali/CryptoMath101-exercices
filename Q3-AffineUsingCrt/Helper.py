@@ -44,7 +44,6 @@ def modinv(a, m):
         return x % m
 
 
-
 def solve_crt(cts, primes):
     mode = reduce((lambda x, y: x * y), primes)
     pt = 0

@@ -26,7 +26,7 @@ def generate_key(key_file, count_of_bits):
         rand_32_int = random.randrange(MIN_RANGE_NUMBER, MAX_RANGE_NUMBER ) | 11  # We only want numbers % 4 == 3, So we'll modify their lower bits to 3
         if rand_32_int not in primes_list and is_prime(rand_32_int):
             primes_list.append(rand_32_int)
-    print("Chosen primes: " + str(primes_list))
+    l("Chosen primes: " + str(primes_list))
     p,q = sorted(primes_list)
     DenCoder.save_key(key_file, p, q)
     l("Key file generated at %s" % (os.path.realpath(key_file.name)))

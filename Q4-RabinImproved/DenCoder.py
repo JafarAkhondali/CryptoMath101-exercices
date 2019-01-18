@@ -70,7 +70,7 @@ class DenCoder:
         ct_file.write(last_block_size.to_bytes(10, byteorder='little'))
 
         for chunk in self.encryption_chunk_reader(pt_file, self.chunk_size_pt):
-            cipher = pow(chunk, 2, self.mode)
+            cipher = powmod(chunk, 2, self.mode)
             ct_file.write(cipher.to_bytes(self.chunk_size_ct, byteorder='little'))
             bar.next()
         bar.finish()
@@ -95,8 +95,8 @@ class DenCoder:
 
         for i, (chunk, chunk_size) in enumerate(self.decryption_chunk_reader(ct_file, self.chunk_size_ct)):
 
-            m_p = pow(chunk, ((p + 1) // 4), p)
-            m_q = pow(chunk, ((q + 1) // 4), q)
+            m_p = powmod(chunk, ((p + 1) // 4), p)
+            m_q = powmod(chunk, ((q + 1) // 4), q)
             _, r, s = egcd(p, q)
 
             assert (r * p + s * q == 1)
